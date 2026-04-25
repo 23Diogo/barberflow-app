@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "BarberFlow Pro",
-    "slug": "barberflow-barber",
+    "slug": "barberflow",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -27,7 +27,7 @@
     "plugins": [
       "expo-secure-store"
     ],
-    "scheme": "barberflow-barber",
+    "scheme": "barberflow",
     "extra": {
       "API_URL": "https://api.bbarberflow.com.br",
       "eas": {
