@@ -17,30 +17,12 @@
         "backgroundColor": "#050816"
       }
     },
-    "plugins": [
-      "expo-secure-store",
-      "expo-font",
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#050816",
-          "resizeMode": "contain"
-        }
-      ]
-    ],
     "scheme": "barberflow",
     "extra": {
-      "API_URL": "https://api.bbarberflow.com.br",
       "eas": {
         "projectId": "4b2289e0-963b-46ef-8cda-d9b629e6cb92"
       }
     },
-    "owner": "diogocamargo",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/4b2289e0-963b-46ef-8cda-d9b629e6cb92"
-    }
+    "owner": "diogocamargo"
   }
 }
