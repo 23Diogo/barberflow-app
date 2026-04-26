@@ -19,7 +19,14 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#050816",
+          "resizeMode": "contain"
+        }
+      ]
     ],
     "scheme": "barberflow",
     "extra": {
@@ -29,6 +36,7 @@
       }
     },
     "owner": "diogocamargo",
+    "newArchEnabled": false,
     "runtimeVersion": {
       "policy": "appVersion"
     },
