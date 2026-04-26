@@ -12,10 +12,7 @@
     },
     "android": {
       "package": "com.barberflow.barber",
-      "versionCode": 1,
-      "adaptiveIcon": {
-        "backgroundColor": "#050816"
-      }
+      "versionCode": 2
     },
     "scheme": "barberflow",
     "extra": {
