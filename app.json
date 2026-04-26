@@ -36,7 +36,6 @@
       }
     },
     "owner": "diogocamargo",
-    "newArchEnabled": false,
     "runtimeVersion": {
       "policy": "appVersion"
     },
