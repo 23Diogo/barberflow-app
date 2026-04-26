@@ -2,17 +2,48 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, ScrollView, FlatList,
-  RefreshControl, Linking,
+  RefreshControl, Linking, Platform,
 } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 const API_URL = 'https://api.bbarberflow.com.br';
 const TOKEN_KEY = 'barberflow_barber_token';
 
+// ─── Storage helper com fallback ──────────────────────────────────────────────
+// SecureStore não funciona em alguns builds Android — usa fallback seguro
+
+const storage = {
+  _mem: {} as Record<string, string>,
+  async get(key: string): Promise<string | null> {
+    try {
+      if (Platform.OS === 'web') return this._mem[key] ?? null;
+      return await SecureStore.getItemAsync(key);
+    } catch {
+      return this._mem[key] ?? null;
+    }
+  },
+  async set(key: string, value: string): Promise<void> {
+    try {
+      this._mem[key] = value;
+      if (Platform.OS !== 'web') await SecureStore.setItemAsync(key, value);
+    } catch {
+      this._mem[key] = value;
+    }
+  },
+  async del(key: string): Promise<void> {
+    try {
+      delete this._mem[key];
+      if (Platform.OS !== 'web') await SecureStore.deleteItemAsync(key);
+    } catch {
+      delete this._mem[key];
+    }
+  },
+};
+
 // ─── API ──────────────────────────────────────────────────────────────────────
 
-async function apiFetch(path, options = {}) {
-  const token = await SecureStore.getItemAsync(TOKEN_KEY);
+async function apiFetch(path: string, options: any = {}): Promise<any> {
+  const token = await storage.get(TOKEN_KEY);
   const res = await fetch(API_URL + path, {
     ...options,
     headers: {
@@ -28,26 +59,26 @@ async function apiFetch(path, options = {}) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatTime(dateStr) {
+function formatTime(dateStr: string) {
   const d = new Date(dateStr);
   return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-function addDays(date, n) {
+function addDays(date: Date, n: number) {
   const d = new Date(date);
   d.setDate(d.getDate() + n);
   return d;
 }
 
-function addWeeks(date, n) { return addDays(date, n * 7); }
+function addWeeks(date: Date, n: number) { return addDays(date, n * 7); }
 
-function addMonths(date, n) {
+function addMonths(date: Date, n: number) {
   const d = new Date(date);
   d.setMonth(d.getMonth() + n);
   return d;
 }
 
-const STATUS = {
+const STATUS: Record<string, { label: string; color: string; bg: string }> = {
   completed:   { label: 'Concluído',    color: '#00e676', bg: 'rgba(0,230,118,0.15)' },
   confirmed:   { label: 'Confirmado',   color: '#4fc3f7', bg: 'rgba(79,195,247,0.15)' },
   pending:     { label: 'Agendado',     color: '#ffd700', bg: 'rgba(255,215,0,0.15)' },
@@ -58,7 +89,7 @@ const STATUS = {
 
 // ─── Tela de Login ────────────────────────────────────────────────────────────
 
-function LoginScreen({ onLogin }) {
+function LoginScreen({ onLogin }: { onLogin: (data: any) => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -74,9 +105,9 @@ function LoginScreen({ onLogin }) {
         method: 'POST',
         body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       });
-      await SecureStore.setItemAsync(TOKEN_KEY, data.token);
+      await storage.set(TOKEN_KEY, data.token);
       onLogin(data);
-    } catch (err) {
+    } catch (err: any) {
       Alert.alert('Erro', err.message);
     } finally {
       setLoading(false);
@@ -112,11 +143,11 @@ function LoginScreen({ onLogin }) {
 
 // ─── Card de agendamento ──────────────────────────────────────────────────────
 
-function AppCard({ apt, onPress }) {
+function AppCard({ apt, onPress }: { apt: any; onPress: () => void }) {
   const client = apt.clients;
   const service = apt.services;
   const st = STATUS[apt.status] || STATUS.pending;
-  const initials = String(client?.name || 'C').split(' ').slice(0, 2).map(p => p[0]?.toUpperCase()).join('');
+  const initials = String(client?.name || 'C').split(' ').slice(0, 2).map((p: string) => p[0]?.toUpperCase()).join('');
 
   return (
     <TouchableOpacity style={s.apCard} onPress={onPress} activeOpacity={0.8}>
@@ -142,10 +173,10 @@ function AppCard({ apt, onPress }) {
 
 // ─── Tela de Agenda ───────────────────────────────────────────────────────────
 
-function AgendaScreen({ auth, onLogout, onDetail }) {
+function AgendaScreen({ auth, onLogout, onDetail }: { auth: any; onLogout: () => void; onDetail: (apt: any) => void }) {
   const [period, setPeriod] = useState('day');
   const [date, setDate] = useState(new Date());
-  const [apts, setApts] = useState([]);
+  const [apts, setApts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -165,7 +196,7 @@ function AgendaScreen({ auth, onLogout, onDetail }) {
 
   useEffect(() => { load(); }, [load]);
 
-  function nav(dir) {
+  function nav(dir: number) {
     setDate(prev =>
       period === 'day'   ? addDays(prev, dir) :
       period === 'week'  ? addWeeks(prev, dir) :
@@ -190,14 +221,14 @@ function AgendaScreen({ auth, onLogout, onDetail }) {
 
   const done = apts.filter(a => a.status === 'completed').length;
   const pending = apts.filter(a => ['pending','confirmed'].includes(a.status)).length;
-  const revenue = apts.filter(a => a.status === 'completed').reduce((s,a) => s + Number(a.final_price||0), 0);
+  const revenue = apts.filter(a => a.status === 'completed').reduce((sum, a) => sum + Number(a.final_price||0), 0);
 
   return (
     <View style={{ flex: 1, backgroundColor: '#050816' }}>
       <View style={s.header}>
         <View>
-          <Text style={s.greeting}>Olá, {auth.user?.name?.split(' ')[0]} 👋</Text>
-          <Text style={s.shopName}>{auth.barbershop?.name}</Text>
+          <Text style={s.greeting}>Olá, {auth?.user?.name?.split(' ')[0]} 👋</Text>
+          <Text style={s.shopName}>{auth?.barbershop?.name}</Text>
         </View>
         <TouchableOpacity onPress={onLogout} style={s.logoutBtn}>
           <Text style={{ color: '#5a6888', fontSize: 22 }}>⎋</Text>
@@ -261,14 +292,14 @@ function AgendaScreen({ auth, onLogout, onDetail }) {
 
 // ─── Tela de Detalhe ──────────────────────────────────────────────────────────
 
-function DetailScreen({ apt, onBack }) {
+function DetailScreen({ apt, onBack }: { apt: any; onBack: () => void }) {
   const client = apt.clients;
   const service = apt.services;
   const st = STATUS[apt.status] || STATUS.pending;
   const d = new Date(apt.scheduled_at);
   const dateStr = d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
   const timeStr = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  const initials = String(client?.name || 'C').split(' ').slice(0, 2).map(p => p[0]?.toUpperCase()).join('');
+  const initials = String(client?.name || 'C').split(' ').slice(0, 2).map((p: string) => p[0]?.toUpperCase()).join('');
 
   function openWhatsApp() {
     const phone = String(client?.whatsapp || client?.phone || '').replace(/\D/g, '');
@@ -359,14 +390,14 @@ function DetailScreen({ apt, onBack }) {
 // ─── App principal ────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [screen, setScreen] = useState('loading');
-  const [auth, setAuth] = useState(null);
-  const [detail, setDetail] = useState(null);
+  const [screen, setScreen] = useState<'loading' | 'login' | 'agenda' | 'detail'>('loading');
+  const [auth, setAuth] = useState<any>(null);
+  const [detail, setDetail] = useState<any>(null);
 
   useEffect(() => {
     async function init() {
       try {
-        const token = await SecureStore.getItemAsync(TOKEN_KEY);
+        const token = await storage.get(TOKEN_KEY);
         if (token) {
           const data = await apiFetch('/api/barber-auth/me');
           setAuth(data);
@@ -382,7 +413,7 @@ export default function App() {
   }, []);
 
   async function handleLogout() {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
+    await storage.del(TOKEN_KEY);
     setAuth(null);
     setScreen('login');
   }
