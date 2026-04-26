@@ -12,7 +12,7 @@
     },
     "android": {
       "package": "com.barberflow.barber",
-      "versionCode": 2
+      "versionCode": 3
     },
     "scheme": "barberflow",
     "extra": {
