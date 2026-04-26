@@ -4,7 +4,7 @@ import {
   ActivityIndicator, Alert, ScrollView, FlatList,
   RefreshControl, Linking,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 const API_URL = 'https://api.bbarberflow.com.br';
 const TOKEN_KEY = 'barberflow_barber_token';
@@ -12,7 +12,7 @@ const TOKEN_KEY = 'barberflow_barber_token';
 // ─── API ──────────────────────────────────────────────────────────────────────
 
 async function apiFetch(path, options = {}) {
-  const token = await AsyncStorage.getItem(TOKEN_KEY);
+  const token = await SecureStore.getItemAsync(TOKEN_KEY);
   const res = await fetch(API_URL + path, {
     ...options,
     headers: {
@@ -33,13 +33,6 @@ function formatTime(dateStr) {
   return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-function formatDate(dateStr) {
-  const d = new Date(dateStr);
-  const today = new Date();
-  if (d.toDateString() === today.toDateString()) return 'Hoje';
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
-}
-
 function addDays(date, n) {
   const d = new Date(date);
   d.setDate(d.getDate() + n);
@@ -47,6 +40,7 @@ function addDays(date, n) {
 }
 
 function addWeeks(date, n) { return addDays(date, n * 7); }
+
 function addMonths(date, n) {
   const d = new Date(date);
   d.setMonth(d.getMonth() + n);
@@ -80,7 +74,7 @@ function LoginScreen({ onLogin }) {
         method: 'POST',
         body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       });
-      await AsyncStorage.setItem(TOKEN_KEY, data.token);
+      await SecureStore.setItemAsync(TOKEN_KEY, data.token);
       onLogin(data);
     } catch (err) {
       Alert.alert('Erro', err.message);
@@ -156,22 +150,18 @@ function AgendaScreen({ auth, onLogout, onDetail }) {
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async (showLoader = true) => {
-  if (showLoader) setLoading(true);
-  try {
-    const dateStr = date.toISOString().split('T')[0];
-    const url = `/api/barber-auth/appointments?period=${period}&date=${dateStr}`;
-    Alert.alert('Debug URL', url);
-    const data = await apiFetch(url);
-    Alert.alert('Debug Data', JSON.stringify(data).substring(0, 300));
-    setApts(Array.isArray(data) ? data : []);
-  } catch(err) {
-    Alert.alert('Erro', err.message);
-    setApts([]);
-  } finally {
-    setLoading(false);
-    setRefreshing(false);
-  }
-}, [period, date]);
+    if (showLoader) setLoading(true);
+    try {
+      const dateStr = date.toISOString().split('T')[0];
+      const data = await apiFetch(`/api/barber-auth/appointments?period=${period}&date=${dateStr}`);
+      setApts(Array.isArray(data) ? data : []);
+    } catch {
+      setApts([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [period, date]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -204,7 +194,6 @@ function AgendaScreen({ auth, onLogout, onDetail }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#050816' }}>
-      {/* Header */}
       <View style={s.header}>
         <View>
           <Text style={s.greeting}>Olá, {auth.user?.name?.split(' ')[0]} 👋</Text>
@@ -215,7 +204,6 @@ function AgendaScreen({ auth, onLogout, onDetail }) {
         </TouchableOpacity>
       </View>
 
-      {/* Period tabs */}
       <View style={s.tabs}>
         {['day','week','month'].map(p => (
           <TouchableOpacity key={p} style={[s.tab, period===p && s.tabActive]} onPress={() => setPeriod(p)}>
@@ -226,14 +214,12 @@ function AgendaScreen({ auth, onLogout, onDetail }) {
         ))}
       </View>
 
-      {/* Date nav */}
       <View style={s.dateNav}>
         <TouchableOpacity onPress={() => nav(-1)} style={s.navBtn}><Text style={s.navArrow}>‹</Text></TouchableOpacity>
         <Text style={s.dateLabel}>{dateLabel()}</Text>
         <TouchableOpacity onPress={() => nav(1)} style={s.navBtn}><Text style={s.navArrow}>›</Text></TouchableOpacity>
       </View>
 
-      {/* Stats */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
         {[
           { label: 'Total',   value: String(apts.length), color: '#4fc3f7' },
@@ -248,7 +234,6 @@ function AgendaScreen({ auth, onLogout, onDetail }) {
         ))}
       </ScrollView>
 
-      {/* List */}
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color="#4fc3f7" size="large" />
@@ -302,14 +287,13 @@ function DetailScreen({ apt, onBack }) {
     <View style={{ flex: 1, backgroundColor: '#050816' }}>
       <View style={s.detHeader}>
         <TouchableOpacity onPress={onBack} style={s.backBtn}>
-          <Text style={{ color: '#4fc3f7', fontSize: 24 }}>‹</Text>
+          <Text style={{ color: '#4fc3f7', fontSize: 28 }}>‹</Text>
         </TouchableOpacity>
         <Text style={s.detTitle}>Detalhes</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 40 }}>
-        {/* Cliente */}
         <View style={s.clientCard}>
           <View style={s.detAvatar}><Text style={s.detAvatarText}>{initials}</Text></View>
           <View style={{ flex: 1 }}>
@@ -321,7 +305,6 @@ function DetailScreen({ apt, onBack }) {
           </View>
         </View>
 
-        {/* Info */}
         <View style={s.infoCard}>
           {[
             ['✂️', 'Serviço',  service?.name || '—'],
@@ -345,7 +328,6 @@ function DetailScreen({ apt, onBack }) {
           ) : null}
         </View>
 
-        {/* Ações */}
         <View style={s.actCard}>
           <Text style={s.actTitle}>AÇÕES</Text>
           <TouchableOpacity style={s.actBtn} onPress={openWhatsApp} activeOpacity={0.8}>
@@ -356,7 +338,7 @@ function DetailScreen({ apt, onBack }) {
               <Text style={s.actLabel}>Enviar mensagem no WhatsApp</Text>
               <Text style={s.actSub}>Abre o WhatsApp com mensagem pré-pronta</Text>
             </View>
-            <Text style={{ color: '#3a4568' }}>›</Text>
+            <Text style={{ color: '#3a4568', fontSize: 18 }}>›</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.actBtn} onPress={callClient} activeOpacity={0.8}>
             <View style={[s.actIcon, { backgroundColor: '#0e1e38' }]}>
@@ -366,7 +348,7 @@ function DetailScreen({ apt, onBack }) {
               <Text style={s.actLabel}>Ligar para o cliente</Text>
               <Text style={s.actSub}>Abre o discador do celular</Text>
             </View>
-            <Text style={{ color: '#3a4568' }}>›</Text>
+            <Text style={{ color: '#3a4568', fontSize: 18 }}>›</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -384,7 +366,7 @@ export default function App() {
   useEffect(() => {
     async function init() {
       try {
-        const token = await AsyncStorage.getItem(TOKEN_KEY);
+        const token = await SecureStore.getItemAsync(TOKEN_KEY);
         if (token) {
           const data = await apiFetch('/api/barber-auth/me');
           setAuth(data);
@@ -400,7 +382,7 @@ export default function App() {
   }, []);
 
   async function handleLogout() {
-    await AsyncStorage.removeItem(TOKEN_KEY);
+    await SecureStore.deleteItemAsync(TOKEN_KEY);
     setAuth(null);
     setScreen('login');
   }
@@ -437,7 +419,6 @@ export default function App() {
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  // Login
   loginScroll: { flexGrow: 1, backgroundColor: '#050816', justifyContent: 'center', padding: 24 },
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 40, alignSelf: 'center' },
   logoMark: { width: 52, height: 52, borderRadius: 14, backgroundColor: '#120600', borderWidth: 1, borderColor: 'rgba(255,100,0,0.5)', alignItems: 'center', justifyContent: 'center' },
@@ -453,7 +434,6 @@ const s = StyleSheet.create({
   btnOff: { opacity: 0.6 },
   btnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   hint: { fontSize: 11, color: '#3a4568', textAlign: 'center', marginTop: 16 },
-  // Agenda
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingTop: 56 },
   greeting: { fontSize: 18, fontWeight: '800', color: '#e8f0fe' },
   shopName: { fontSize: 12, color: '#5a6888', marginTop: 2 },
@@ -470,7 +450,6 @@ const s = StyleSheet.create({
   stat: { backgroundColor: '#0a0c1a', borderRadius: 12, borderWidth: 1, padding: 14, marginRight: 10, minWidth: 80, alignItems: 'center' },
   statVal: { fontSize: 20, fontWeight: '900' },
   statLbl: { fontSize: 10, color: '#5a6888', marginTop: 2 },
-  // Card
   apCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#0a0c1a', borderRadius: 12, borderWidth: 1, borderColor: '#1e2345', padding: 12, marginBottom: 8 },
   apLine: { width: 3, borderRadius: 2, position: 'absolute', left: 0, top: 0, bottom: 0 },
   apTime: { alignItems: 'center', width: 40, marginLeft: 6 },
@@ -483,7 +462,6 @@ const s = StyleSheet.create({
   apBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   apBadgeText: { fontSize: 9, fontWeight: '700' },
   apPrice: { fontSize: 12, fontWeight: '800', color: '#4fc3f7' },
-  // Detail
   detHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 56, paddingBottom: 12 },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   detTitle: { fontSize: 16, fontWeight: '700', color: '#e8f0fe' },
