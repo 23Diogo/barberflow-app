@@ -7,12 +7,12 @@
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.barberflow.barber",
+      "bundleIdentifier": "com.bbarberflow.barber",
       "buildNumber": "1"
     },
     "android": {
-      "package": "com.barberflow.barber",
-      "versionCode": 3
+      "package": "com.bbarberflow.barber",
+      "versionCode": 1
     },
     "scheme": "barberflow",
     "extra": {
